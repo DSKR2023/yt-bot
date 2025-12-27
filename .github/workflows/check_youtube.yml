@@ -1,0 +1,29 @@
+name: YouTube Watcher
+on:
+  schedule:
+    - cron: '*/5 * * * *' # 5分おき
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install requests google-api-python-client
+      - name: Run
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CHANNEL_LIST: ${{ secrets.CHANNEL_LIST }}
+        run: python main.py
+      - name: Save
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add video_data.json || true
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update" && git push)
