@@ -81,47 +81,61 @@ def check_loop():
         latest = get_latest_video_rss(ch["id"])
         if latest:
             last_id = history.get(ch["id"])
-            
-            # IDが変わっている（または初めて見た）場合
             if latest["id"] != last_id:
-                # データを更新する
                 current_data[ch["id"]] = latest["id"]
-                
-                # ★ここが修正ポイント！
-                # 「履歴(last_id)がある時」だけ通知リストに入れる。
-                # 履歴がない(None)時は、初回起動なので通知しない（スルーする）。
+                # 初回(None)はスキップ、履歴があってIDが変わった時だけチェック対象へ
                 if last_id is not None:
                     check_list.append((ch, latest["id"], latest["title"]))
                 else:
-                    print(f"初回データ登録（通知スキップ）: {ch['name']} - {latest['title']}")
+                    print(f"初回データ登録（通知スキップ）: {latest['title']}")
 
-    # 詳細確認と通知（新規があった場合のみ動く）
+    # 詳細確認と通知
     for ch, video_id, rss_title in check_list:
         details = check_video_details(video_id)
         title = rss_title
         is_live = False
         video_url = f"https://www.youtube.com/watch?v={video_id}"
         
-        if details:
-            title = details["snippet"]["title"]
-            live_type = details["snippet"].get("liveBroadcastContent", "none")
-            if live_type == "upcoming": continue
-            if live_type == "live": is_live = True
-        
-        send_discord(ch["name"], title, video_url, is_live, ch.get("is_dskr", False))
+        should_notify = False
 
-    # データを保存
+        if details:
+            snippet = details["snippet"]
+            live_type = snippet.get("liveBroadcastContent", "none")
+            
+            # 1. 配信中 (Live) -> 通知する
+            if live_type == "live":
+                is_live = True
+                should_notify = True
+            
+            # 2. 待機所 (Upcoming) -> スキップ
+            elif live_type == "upcoming":
+                print(f"待機所のためスキップ: {title}")
+                should_notify = False
+                
+            # 3. それ以外 (None = 動画 または アーカイブ)
+            else:
+                # ★ここが重要！
+                # 「liveStreamingDetails」が含まれている場合は、元配信のアーカイブなので無視する
+                if "liveStreamingDetails" in details:
+                    print(f"アーカイブのためスキップ: {title}")
+                    should_notify = False
+                else:
+                    # ライブ情報がないものだけを「動画投稿」として扱う
+                    is_live = False
+                    should_notify = True
+        
+        if should_notify:
+            send_discord(ch["name"], title, video_url, is_live, ch.get("is_dskr", False))
+
     save_data(current_data)
 
 def main():
     print("⚡ Starting 1-minute interval loop...")
-    # 5回繰り返す（約5分間動き続ける）
     for i in range(5):
         print(f"🔄 Check {i+1}/5")
         check_loop()
-        
-        if i < 4: # 最後以外は待機
-            time.sleep(60) # 60秒待機
+        if i < 4:
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()
