@@ -72,7 +72,6 @@ def check_video_details(video_id):
 def check_loop():
     if not CHANNELS: return
     
-    # 履歴を読み込み
     history = load_data()
     current_data = history.copy()
     check_list = []
@@ -81,13 +80,22 @@ def check_loop():
     for ch in CHANNELS:
         latest = get_latest_video_rss(ch["id"])
         if latest:
-            # IDが変わっていたら
-            if latest["id"] != history.get(ch["id"]):
-                # まだ今回の起動中に通知してないやつだけ処理
-                check_list.append((ch, latest["id"], latest["title"]))
+            last_id = history.get(ch["id"])
+            
+            # IDが変わっている（または初めて見た）場合
+            if latest["id"] != last_id:
+                # データを更新する
                 current_data[ch["id"]] = latest["id"]
+                
+                # ★ここが修正ポイント！
+                # 「履歴(last_id)がある時」だけ通知リストに入れる。
+                # 履歴がない(None)時は、初回起動なので通知しない（スルーする）。
+                if last_id is not None:
+                    check_list.append((ch, latest["id"], latest["title"]))
+                else:
+                    print(f"初回データ登録（通知スキップ）: {ch['name']} - {latest['title']}")
 
-    # 詳細確認と通知
+    # 詳細確認と通知（新規があった場合のみ動く）
     for ch, video_id, rss_title in check_list:
         details = check_video_details(video_id)
         title = rss_title
@@ -102,7 +110,7 @@ def check_loop():
         
         send_discord(ch["name"], title, video_url, is_live, ch.get("is_dskr", False))
 
-    # データを保存（次のループのためにファイルに書き込む）
+    # データを保存
     save_data(current_data)
 
 def main():
