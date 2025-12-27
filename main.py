@@ -4,6 +4,7 @@ import json
 import urllib.request
 import xml.etree.ElementTree as ET
 import requests
+import time
 from googleapiclient.discovery import build
 
 # --- 金庫(Secrets)から情報を取る ---
@@ -68,32 +69,51 @@ def check_video_details(video_id):
     except: pass
     return None
 
-def main():
-    if not CHANNELS: sys.exit(0)
+def check_loop():
+    if not CHANNELS: return
+    
+    # 履歴を読み込み
     history = load_data()
     current_data = history.copy()
     check_list = []
     
+    # RSSチェック
     for ch in CHANNELS:
         latest = get_latest_video_rss(ch["id"])
         if latest:
+            # IDが変わっていたら
             if latest["id"] != history.get(ch["id"]):
+                # まだ今回の起動中に通知してないやつだけ処理
                 check_list.append((ch, latest["id"], latest["title"]))
                 current_data[ch["id"]] = latest["id"]
 
+    # 詳細確認と通知
     for ch, video_id, rss_title in check_list:
         details = check_video_details(video_id)
         title = rss_title
         is_live = False
         video_url = f"https://www.youtube.com/watch?v={video_id}"
+        
         if details:
             title = details["snippet"]["title"]
             live_type = details["snippet"].get("liveBroadcastContent", "none")
             if live_type == "upcoming": continue
             if live_type == "live": is_live = True
+        
         send_discord(ch["name"], title, video_url, is_live, ch.get("is_dskr", False))
 
+    # データを保存（次のループのためにファイルに書き込む）
     save_data(current_data)
+
+def main():
+    print("⚡ Starting 1-minute interval loop...")
+    # 5回繰り返す（約5分間動き続ける）
+    for i in range(5):
+        print(f"🔄 Check {i+1}/5")
+        check_loop()
+        
+        if i < 4: # 最後以外は待機
+            time.sleep(60) # 60秒待機
 
 if __name__ == "__main__":
     main()
