@@ -1,0 +1,28 @@
+name: Keep Alive (60-day rule preventer)
+
+on:
+  schedule:
+    - cron: '0 0 1 * *' # 毎月1日の0:00(UTC)に実行
+  workflow_dispatch: # テスト用ボタン
+
+jobs:
+  keep_alive:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 保存する権限
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Update Timestamp
+        run: |
+          # 現在時刻を keepalive.txt に書き込む
+          date > keepalive.txt
+          
+          # GitHubに保存（コミット）する
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add keepalive.txt
+          git commit -m "Auto-commit: Prevent 60-day inactivity limit" || exit 0
+          git push
