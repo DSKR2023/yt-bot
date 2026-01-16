@@ -1,7 +1,9 @@
 {
-  "UCyZHUS5QXe2i-5rD4YHt3Eg": "sdQlSpb-hJ4",
-  "UC__5mJIpoeTqE2jsB_Ve9ng": "G78xKoMje1Q",
-  "UC203sorPBDDco6JEouo4-wg": "qLhAcRNF2ms",
-  "UCAjB4RmxNUabOTrPPKnhbtg": "rZayYCgnG2M",
-  "UC4Uikuulpd3IlYc9eFUxWeg": "hFR4j4_cCt4"
+  "notified_ids": [
+    "sdQlSpb-hJ4",
+    "G78xKoMje1Q",
+    "qLhAcRNF2ms",
+    "rZayYCgnG2M",
+    "hFR4j4_cCt4"
+  ]
 }
